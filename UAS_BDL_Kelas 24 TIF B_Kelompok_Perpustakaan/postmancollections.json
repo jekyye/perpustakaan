@@ -1,39 +1,148 @@
 {
   "info": {
-    "name": "Perpustakaan API",
-    "description": "API documentation for the Perpustakaan system",
+    "name": "Perpustakaan RESTful API",
+    "description": "Complete API collection for Sistem Informasi Manajemen Perpustakaan.\n\n## How to Use\n1. Run endpoints in order from top to bottom (Register Admin → Login Admin → ...)\n2. Bearer token is automatically saved after Register or Login.\n3. Created resource IDs (buku_id, peminjaman_id) are auto-captured for use in subsequent requests.\n4. Every endpoint includes test scripts that validate the response.\n\n## Roles\n- **admin** — Full access (CRUD Buku, manage Peminjaman)\n- **petugas** — Same as admin for Buku CRUD\n- **anggota** — Can only borrow/return books and view own data",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8000",
+      "value": "http://perpustakaan.test",
       "type": "string"
     },
     {
       "key": "token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@perpustakaan.com",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "anggota_email",
+      "value": "anggota@perpustakaan.com",
+      "type": "string"
+    },
+    {
+      "key": "anggota_password",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "anggota_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buku_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buku_id_2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "kategori_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "peminjaman_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "Auth",
+      "name": "1. Auth",
+      "description": "Authentication endpoints: Register, Login, Logout.\nRun Register Admin first, then Login Admin to auto-save the bearer token.",
       "item": [
         {
-          "name": "Register",
+          "name": "1.1 Register Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response contains access_token', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "    pm.expect(data.token_type).to.eql('Bearer');",
+                  "    pm.expect(data.user.role).to.eql('admin');",
+                  "});",
+                  "",
+                  "// Auto-save token",
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "    pm.collectionVariables.set('token', data.access_token);",
+                  "    console.log('✅ Admin token saved automatically');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password\",\n    \"role\": \"anggota\"\n}",
+              "raw": "{\n    \"name\": \"Administrator\",\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\",\n    \"role\": \"admin\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -42,26 +151,299 @@
             },
             "url": {
               "raw": "{{base_url}}/api/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "register"
-              ]
-            }
+              "host": ["{{base_url}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Register a new admin user. The token is automatically saved to the collection variable `token`."
           }
         },
         {
-          "name": "Login",
+          "name": "1.2 Register Anggota",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response contains access_token and anggota role', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "    pm.expect(data.user.role).to.eql('anggota');",
+                  "});",
+                  "",
+                  "// Save anggota token separately",
                   "var data = pm.response.json();",
                   "if (data.access_token) {",
-                  "    pm.collectionVariables.set(\"token\", data.access_token);",
+                  "    pm.collectionVariables.set('anggota_token', data.access_token);",
+                  "    console.log('✅ Anggota token saved automatically');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Anggota Perpustakaan\",\n    \"email\": \"{{anggota_email}}\",\n    \"password\": \"{{anggota_password}}\",\n    \"role\": \"anggota\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Register a new anggota (member) user. The token is saved to `anggota_token`."
+          }
+        },
+        {
+          "name": "1.3 Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Login successful with token', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Login successful');",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "    pm.expect(data.token_type).to.eql('Bearer');",
+                  "});",
+                  "",
+                  "// Auto-save token for all subsequent requests",
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "    pm.collectionVariables.set('token', data.access_token);",
+                  "    console.log('✅ Admin token updated: ' + data.access_token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "login"]
+            },
+            "description": "Login as admin. The token is automatically saved and all subsequent requests will use it via collection-level Bearer auth."
+          }
+        },
+        {
+          "name": "1.4 Login Anggota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Login successful', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Login successful');",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "});",
+                  "",
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "    pm.collectionVariables.set('anggota_token', data.access_token);",
+                  "    console.log('✅ Anggota token updated');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{anggota_email}}\",\n    \"password\": \"{{anggota_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "login"]
+            },
+            "description": "Login as anggota. Token saved to `anggota_token` for member-specific tests."
+          }
+        },
+        {
+          "name": "1.5 Get User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user data', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('id');",
+                  "    pm.expect(data).to.have.property('name');",
+                  "    pm.expect(data).to.have.property('email');",
+                  "    pm.expect(data).to.have.property('role');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user"]
+            },
+            "description": "Get the authenticated user's profile. Uses the collection-level Bearer token (admin by default)."
+          }
+        },
+        {
+          "name": "1.6 Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Logged out successfully', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Logged out successfully');",
+                  "});",
+                  "",
+                  "// Note: After logout, you need to Login again to get a new token",
+                  "console.log('⚠️ Token has been revoked. Run Login Admin again to get a new token.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "logout"]
+            },
+            "description": "Logout the current user and revoke the token. You will need to Login again after this."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Buku (CRUD)",
+      "description": "Full CRUD operations for books.\nRequires admin/petugas role for Create, Update, Delete.\nAll roles can Read (GET).",
+      "item": [
+        {
+          "name": "2.1 Create Buku (1st book)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Buku created successfully', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Buku created successfully');",
+                  "    pm.expect(data.data).to.have.property('id');",
+                  "    pm.expect(data.data.judul).to.eql('Laskar Pelangi');",
+                  "});",
+                  "",
+                  "// Auto-save buku_id for subsequent requests",
+                  "var data = pm.response.json();",
+                  "if (data.data && data.data.id) {",
+                  "    pm.collectionVariables.set('buku_id', data.data.id);",
+                  "    console.log('✅ buku_id saved: ' + data.data.id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -73,13 +455,567 @@
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password\"\n}",
+              "raw": "{\n    \"kategori_id\": {{kategori_id}},\n    \"judul\": \"Laskar Pelangi\",\n    \"pengarang\": \"Andrea Hirata\",\n    \"penerbit\": \"Bentang Pustaka\",\n    \"tahun_terbit\": 2005,\n    \"isbn\": \"978-979-1227-00-2\",\n    \"stok\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/buku",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Create the first book. The `buku_id` is auto-saved for use in Get/Update/Delete."
+          }
+        },
+        {
+          "name": "2.2 Create Buku (2nd book)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Second book created', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Buku created successfully');",
+                  "    pm.expect(data.data.judul).to.eql('Bumi Manusia');",
+                  "});",
+                  "",
+                  "var data = pm.response.json();",
+                  "if (data.data && data.data.id) {",
+                  "    pm.collectionVariables.set('buku_id_2', data.data.id);",
+                  "    console.log('✅ buku_id_2 saved: ' + data.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"kategori_id\": {{kategori_id}},\n    \"judul\": \"Bumi Manusia\",\n    \"pengarang\": \"Pramoedya Ananta Toer\",\n    \"penerbit\": \"Hasta Mitra\",\n    \"tahun_terbit\": 1980,\n    \"isbn\": \"978-979-3210-01-5\",\n    \"stok\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/buku",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Create a second book so we can test multi-book borrowing. The `buku_id_2` is auto-saved."
+          }
+        },
+        {
+          "name": "2.3 Get All Buku",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains data array', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('data');",
+                  "    pm.expect(data.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Each buku has kategori (eager loaded)', function () {",
+                  "    var data = pm.response.json();",
+                  "    if (data.data.length > 0) {",
+                  "        pm.expect(data.data[0]).to.have.property('kategori');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/buku",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Get all books with their categories. Accessible by all authenticated roles."
+          }
+        },
+        {
+          "name": "2.4 Get Buku by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains buku detail with kategori', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('data');",
+                  "    pm.expect(data.data).to.have.property('id');",
+                  "    pm.expect(data.data).to.have.property('judul');",
+                  "    pm.expect(data.data).to.have.property('kategori');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/buku/{{buku_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku", "{{buku_id}}"]
+            },
+            "description": "Get a single book by ID. Uses the auto-saved `buku_id` from the Create step."
+          }
+        },
+        {
+          "name": "2.5 Update Buku",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Buku updated successfully', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Buku updated successfully');",
+                  "    pm.expect(data.data.stok).to.eql(15);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"kategori_id\": {{kategori_id}},\n    \"judul\": \"Laskar Pelangi (Edisi Revisi)\",\n    \"pengarang\": \"Andrea Hirata\",\n    \"penerbit\": \"Bentang Pustaka\",\n    \"tahun_terbit\": 2008,\n    \"isbn\": \"978-979-1227-00-2\",\n    \"stok\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/buku/{{buku_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku", "{{buku_id}}"]
+            },
+            "description": "Update an existing book. Only admin/petugas can do this."
+          }
+        },
+        {
+          "name": "2.6 Delete Buku",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Buku deleted successfully', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Buku deleted successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/buku/{{buku_id_2}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku", "{{buku_id_2}}"]
+            },
+            "description": "Delete a book. Only admin/petugas can do this. Deletes the 2nd book so we keep the 1st for borrowing tests."
+          }
+        },
+        {
+          "name": "2.7 Create Buku (replace deleted)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var data = pm.response.json();",
+                  "if (data.data && data.data.id) {",
+                  "    pm.collectionVariables.set('buku_id_2', data.data.id);",
+                  "    console.log('✅ buku_id_2 replaced: ' + data.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"kategori_id\": {{kategori_id}},\n    \"judul\": \"Negeri 5 Menara\",\n    \"pengarang\": \"Ahmad Fuadi\",\n    \"penerbit\": \"Gramedia Pustaka Utama\",\n    \"tahun_terbit\": 2009,\n    \"isbn\": \"978-979-2290-11-3\",\n    \"stok\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/buku",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Create a replacement book after deletion, so we have 2 books available for the peminjaman (borrowing) tests."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Peminjaman (Borrowing)",
+      "description": "Borrowing and returning books.\nIncludes multi-step validation, stock management, and concurrency protection.",
+      "item": [
+        {
+          "name": "3.1 Create Peminjaman (borrow 2 books)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Peminjaman berhasil', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Peminjaman berhasil');",
+                  "    pm.expect(data.data).to.have.property('id');",
+                  "    pm.expect(data.data).to.have.property('detail_peminjaman');",
+                  "});",
+                  "",
+                  "// Auto-save peminjaman_id",
+                  "var data = pm.response.json();",
+                  "if (data.data && data.data.id) {",
+                  "    pm.collectionVariables.set('peminjaman_id', data.data.id);",
+                  "    console.log('✅ peminjaman_id saved: ' + data.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"buku_ids\": [{{buku_id}}, {{buku_id_2}}],\n    \"tenggat_kembali\": \"2026-08-18\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/peminjaman",
+              "host": ["{{base_url}}"],
+              "path": ["api", "peminjaman"]
+            },
+            "description": "Borrow 2 books at once. The `peminjaman_id` is auto-saved. Stock will be decremented."
+          }
+        },
+        {
+          "name": "3.2 Get All Peminjaman",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains peminjaman data', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('data');",
+                  "    pm.expect(data.data).to.be.an('array');",
+                  "    pm.expect(data.data.length).to.be.greaterThan(0);",
+                  "});",
+                  "",
+                  "pm.test('Peminjaman includes detail with buku (eager loaded)', function () {",
+                  "    var data = pm.response.json();",
+                  "    if (data.data.length > 0) {",
+                  "        pm.expect(data.data[0]).to.have.property('detail_peminjaman');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/peminjaman",
+              "host": ["{{base_url}}"],
+              "path": ["api", "peminjaman"]
+            },
+            "description": "Get all borrowing records. Admin/petugas see all records; anggota sees only their own."
+          }
+        },
+        {
+          "name": "3.3 Kembalikan Buku (return 1 book)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Pengembalian buku berhasil', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Pengembalian buku berhasil');",
+                  "    pm.expect(data.data).to.have.property('detail_peminjaman');",
+                  "});",
+                  "",
+                  "pm.test('Peminjaman status is still dipinjam (partial return)', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.data.status).to.eql('dipinjam');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"buku_ids\": [{{buku_id}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/peminjaman/{{peminjaman_id}}/kembali",
+              "host": ["{{base_url}}"],
+              "path": ["api", "peminjaman", "{{peminjaman_id}}", "kembali"]
+            },
+            "description": "Return only 1 of 2 borrowed books. Status should remain 'dipinjam' (partial return)."
+          }
+        },
+        {
+          "name": "3.4 Kembalikan Buku (return last book)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Pengembalian buku berhasil', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Pengembalian buku berhasil');",
+                  "});",
+                  "",
+                  "pm.test('Peminjaman status is dikembalikan (all returned)', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.data.status).to.eql('dikembalikan');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"buku_ids\": [{{buku_id_2}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/peminjaman/{{peminjaman_id}}/kembali",
+              "host": ["{{base_url}}"],
+              "path": ["api", "peminjaman", "{{peminjaman_id}}", "kembali"]
+            },
+            "description": "Return the last borrowed book. Status should change to 'dikembalikan' and stock is restored."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Validation & Error Tests",
+      "description": "Tests to verify that validation, authorization, and error handling work correctly.",
+      "item": [
+        {
+          "name": "4.1 Login with Invalid Credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Invalid credentials message', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Invalid credentials');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"wrong@email.com\",\n    \"password\": \"wrongpassword\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -88,134 +1024,77 @@
             },
             "url": {
               "raw": "{{base_url}}/api/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "login"
-              ]
-            }
+              "host": ["{{base_url}}"],
+              "path": ["api", "login"]
+            },
+            "description": "Verify that invalid credentials return 401."
           }
         },
         {
-          "name": "Logout",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+          "name": "4.2 Access without Token (Unauthenticated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthenticated', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Unauthenticated message', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Unauthenticated.');",
+                  "});"
+                ],
+                "type": "text/javascript"
               }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/logout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "logout"
-              ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "User",
-      "item": [
-        {
-          "name": "Get User Profile",
+          ],
           "request": {
             "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
+              "type": "noauth"
             },
             "method": "GET",
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/user",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "user"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Buku",
-      "item": [
-        {
-          "name": "Get All Buku",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "value": "application/json"
               }
             ],
             "url": {
               "raw": "{{base_url}}/api/buku",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "buku"
-              ]
-            }
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Verify that accessing a protected endpoint without token returns 401."
           }
         },
         {
-          "name": "Create Buku",
+          "name": "4.3 Create Buku as Anggota (Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Anggota cannot create buku', function () {",
+                  "    console.log('✅ Role-based authorization working correctly');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token}}",
+                  "value": "{{anggota_token}}",
                   "type": "string"
                 }
               ]
@@ -224,13 +1103,16 @@
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"kategori_id\": 1,\n    \"judul\": \"Belajar Laravel 11\",\n    \"pengarang\": \"Taylor Otwell\",\n    \"penerbit\": \"Laravel Press\",\n    \"tahun_terbit\": 2024,\n    \"isbn\": \"978-3-16-148410-0\",\n    \"stok\": 10\n}",
+              "raw": "{\n    \"kategori_id\": {{kategori_id}},\n    \"judul\": \"Buku Ilegal\",\n    \"pengarang\": \"Hacker\",\n    \"penerbit\": \"Unknown\",\n    \"tahun_terbit\": 2024,\n    \"isbn\": \"000-000-0000-00-0\",\n    \"stok\": 99\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -239,231 +1121,84 @@
             },
             "url": {
               "raw": "{{base_url}}/api/buku",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "buku"
-              ]
-            }
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Verify that anggota (member) role cannot create books. Should return 403 Forbidden."
           }
         },
         {
-          "name": "Get Buku by ID",
+          "name": "4.4 Get Buku Not Found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Buku not found message', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql('Buku not found');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/buku/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "buku",
-                "1"
-              ]
-            }
+              "raw": "{{base_url}}/api/buku/99999",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku", "99999"]
+            },
+            "description": "Verify that requesting a non-existent book returns 404."
           }
         },
         {
-          "name": "Update Buku",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+          "name": "4.5 Create Buku with Invalid Data (Validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Validation Error', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('Response contains validation errors', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('errors');",
+                  "    console.log('✅ Validation rules working correctly');",
+                  "});"
+                ],
+                "type": "text/javascript"
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"kategori_id\": 1,\n    \"judul\": \"Belajar Laravel 11 Update\",\n    \"pengarang\": \"Taylor Otwell\",\n    \"penerbit\": \"Laravel Press\",\n    \"tahun_terbit\": 2024,\n    \"isbn\": \"978-3-16-148410-0\",\n    \"stok\": 15\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/buku/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "buku",
-                "1"
-              ]
             }
-          }
-        },
-        {
-          "name": "Delete Buku",
+          ],
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/buku/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "buku",
-                "1"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Peminjaman",
-      "item": [
-        {
-          "name": "Get All Peminjaman",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/peminjaman",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "peminjaman"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create Peminjaman",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"buku_ids\": [1, 2],\n    \"tenggat_kembali\": \"2024-12-31\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/peminjaman",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "peminjaman"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Kembalikan Buku",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
+                "value": "application/json"
+              },
               {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"buku_ids\": [1]\n}",
+              "raw": "{\n    \"judul\": \"\",\n    \"isbn\": \"\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -471,17 +1206,11 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/peminjaman/1/kembali",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "peminjaman",
-                "1",
-                "kembali"
-              ]
-            }
+              "raw": "{{base_url}}/api/buku",
+              "host": ["{{base_url}}"],
+              "path": ["api", "buku"]
+            },
+            "description": "Verify that submitting invalid/empty data returns 422 with validation errors."
           }
         }
       ]
