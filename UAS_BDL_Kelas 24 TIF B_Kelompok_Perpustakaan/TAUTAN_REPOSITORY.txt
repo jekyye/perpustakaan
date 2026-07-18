@@ -1,4 +1,4 @@
 Link Repository (GitHub/GitLab):
 [Silakan paste link repository Anda di sini]
 
-Contoh: https://github.com/username/perpustakaan
+Contoh: https://github.com/jekyye/perpustakaan
